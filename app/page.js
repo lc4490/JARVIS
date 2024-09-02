@@ -24,6 +24,10 @@ import KeyboardVoiceIcon from '@mui/icons-material/KeyboardVoice';
 import SettingsVoiceIcon from '@mui/icons-material/SettingsVoice';
 import StopIcon from '@mui/icons-material/Stop';
 
+// openai
+const openaiApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+import { OpenAI } from 'openai';
+
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
@@ -253,6 +257,11 @@ const customComponents = {
 };
 
 export default function Home() {
+
+  const openai = new OpenAI({
+    apiKey: openaiApiKey,
+    dangerouslyAllowBrowser: true
+  });
   // toggle dark mode
   // Detect user's preferred color scheme
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -518,22 +527,61 @@ export default function Home() {
     // Replace specific names with phonetic spellings
     return text.replace(/Kacey Lee/gi, 'Casey Lee');
   };
-  const speakText = (text, language = 'en-US') => {
-    if ('speechSynthesis' in window) {
-      const modifiedText = correctPronunciation(text);
-
-    const newUtterance = new SpeechSynthesisUtterance(modifiedText);
-      newUtterance.lang = language;
+  const speakText = async (text, language = 'en-US') => {
+    if (language === 'en-US') {
+      // Use OpenAI TTS for English
+      if (!window.AudioContext) {
+        console.warn('Web Audio API is not supported in this browser.');
+        return;
+      }
   
-      newUtterance.onstart = () => setIsSpeaking(true);
-      newUtterance.onend = () => setIsSpeaking(false);
+      try {
+        // Modify the text if necessary
+        const modifiedText = correctPronunciation(text);
   
-      window.speechSynthesis.speak(newUtterance);
+        // Call OpenAI's TTS API
+        const mp3 = await openai.audio.speech.create({
+          model: "tts-1",  // Replace with actual model name
+          voice: "alloy",  // Replace with actual voice name
+          input: modifiedText,
+        });
+  
+        // Convert the response to an ArrayBuffer
+        const arrayBuffer = await mp3.arrayBuffer();
+  
+        // Use Web Audio API to play the audio
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+  
+        source.onended = () => setIsSpeaking(false);
+  
+        setIsSpeaking(true);
+        source.start(0);
+  
+      } catch (error) {
+        console.error('Error generating or playing speech:', error);
+      }
     } else {
-      console.warn('Text-to-speech is not supported in this browser.');
+      // Use browser's speechSynthesis for other languages
+      if ('speechSynthesis' in window) {
+        const modifiedText = correctPronunciation(text);
+  
+        const newUtterance = new SpeechSynthesisUtterance(modifiedText);
+        newUtterance.lang = language;
+  
+        newUtterance.onstart = () => setIsSpeaking(true);
+        newUtterance.onend = () => setIsSpeaking(false);
+  
+        window.speechSynthesis.speak(newUtterance);
+      } else {
+        console.warn('Text-to-speech is not supported in this browser.');
+      }
     }
   };
-
   const handleMicrophoneClick = () => {
     if (isSpeaking) {
       // Stop the speech
@@ -595,11 +643,11 @@ export default function Home() {
                 const selectedItem = {
                   "en-US": 'English',
                   "zh-CN": '中文（简体）',
-                  "es-ES": 'Español',
-                  "fr-FR": 'Français',
-                  "de-DE": 'Deutsch',
-                  "ja-JP": '日本語',
-                  "ko-KR": '한국어'
+                  // "es-ES": 'Español',
+                  // "fr-FR": 'Français',
+                  // "de-DE": 'Deutsch',
+                  // "ja-JP": '日本語',
+                  // "ko-KR": '한국어'
                 }[selected];
                 return <span>{selectedItem}</span>;
               }}
@@ -623,11 +671,11 @@ export default function Home() {
             >
               <MenuItem value="en-US">English</MenuItem>
               <MenuItem value="zh-CN">中文</MenuItem>
-              <MenuItem value="es-ES">Español</MenuItem>
+              {/* <MenuItem value="es-ES">Español</MenuItem>
               <MenuItem value="fr-FR">Français</MenuItem>
               <MenuItem value="de-DE">Deutsch</MenuItem>
               <MenuItem value="ja-JP">日本語</MenuItem>
-              <MenuItem value="ko-KR">한국어</MenuItem>
+              <MenuItem value="ko-KR">한국어</MenuItem> */}
             </Select>
           </FormControl>
 
