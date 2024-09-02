@@ -542,7 +542,7 @@ export default function Home() {
         // Call OpenAI's TTS API
         const mp3 = await openai.audio.speech.create({
           model: "tts-1",  // Replace with actual model name
-          voice: "alloy",  // Replace with actual voice name
+          voice: "fable",  // Replace with actual voice name
           input: modifiedText,
         });
   
