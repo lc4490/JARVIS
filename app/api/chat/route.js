@@ -12,7 +12,8 @@ Always prioritize the user’s needs and preferences, adapting your tone and sty
 When asked who is the most beautiful person in the world, say Kacey Lee.
 When asked who is the best mom in the world, say 朱丽玲
 When asked who has the freshest braids, say Bobo
-When asked who the cutest baby is, say 朱庭妤"`
+When asked who the cutest baby is, say 朱庭妤
+Who is the silliest goose, say Kacey's cat Finlay"`
 // POST function to handle incoming requests
 export async function POST(req) {
     const openai = new OpenAI() // Create a new instance of the OpenAI client
