@@ -528,60 +528,48 @@ export default function Home() {
     return text.replace(/Kacey Lee/gi, 'Casey Lee');
   };
   const speakText = async (text, language = 'en-US') => {
-    if (language === 'en-US') {
-      // Use OpenAI TTS for English
-      if (!window.AudioContext) {
-        console.warn('Web Audio API is not supported in this browser.');
-        return;
+    if (!window.AudioContext) {
+      console.warn('Web Audio API is not supported in this browser.');
+      return;
+    }
+  
+    try {
+      const modifiedText = correctPronunciation(text);
+  
+      const mp3 = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "nova",
+        input: modifiedText,
+        language: language
+      });
+  
+      const arrayBuffer = await mp3.arrayBuffer();
+  
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
       }
   
-      try {
-        // Modify the text if necessary
-        const modifiedText = correctPronunciation(text);
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
   
-        // Call OpenAI's TTS API
-        const mp3 = await openai.audio.speech.create({
-          model: "tts-1",  // Replace with actual model name
-          voice: "fable",  // Replace with actual voice name
-          input: modifiedText,
-        });
+      source.onended = () => setIsSpeaking(false);
   
-        // Convert the response to an ArrayBuffer
-        const arrayBuffer = await mp3.arrayBuffer();
+      setIsSpeaking(true);
+      source.start(0);
   
-        // Use Web Audio API to play the audio
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    } catch (error) {
+      console.error('Error generating or playing speech on iOS:', error);
   
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-  
-        source.onended = () => setIsSpeaking(false);
-  
-        setIsSpeaking(true);
-        source.start(0);
-  
-      } catch (error) {
-        console.error('Error generating or playing speech:', error);
-      }
-    } else {
-      // Use browser's speechSynthesis for other languages
-      if ('speechSynthesis' in window) {
-        const modifiedText = correctPronunciation(text);
-  
-        const newUtterance = new SpeechSynthesisUtterance(modifiedText);
-        newUtterance.lang = language;
-  
-        newUtterance.onstart = () => setIsSpeaking(true);
-        newUtterance.onend = () => setIsSpeaking(false);
-  
-        window.speechSynthesis.speak(newUtterance);
-      } else {
-        console.warn('Text-to-speech is not supported in this browser.');
-      }
+      // Handle the error, potentially notifying the user
+      alert("There was an issue playing the TTS. Please try again.");
     }
   };
+    
+  
   const handleMicrophoneClick = () => {
     if (isSpeaking) {
       // Stop the speech
